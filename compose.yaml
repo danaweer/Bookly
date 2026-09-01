@@ -1,7 +1,44 @@
 services:
+
   db:
-    image: postgres:14
+    image: postgres:16
+
     environment:
-      POSTGRES_DB: neondb
+      POSTGRES_DB: backend_course
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d backend_course"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  backend:
+    build: .
+
+    image: backend-course-api
+
+    ports:
+      - "5001:5001"
+
+    env_file:
+      - .env
+
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/backend_course
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+
+
+volumes:
+  pgdata:
